@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generador de exámenes PDF</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#5f6b76;--border:#d8dee4;--accent:#1769aa;--accent2:#e8f1f8;--good:#1f7a45;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}main{width:min(900px,calc(100% - 24px));margin:24px auto 50px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px}h1{font-size:1.6rem;margin:0 0 8px}h2{font-size:1.2rem;margin:0 0 18px}p{line-height:1.5}.muted{color:var(--muted)}label{display:block;font-weight:650;margin:18px 0 7px}input[type=text],input[type=file]{width:100%;font:inherit;border:1px solid var(--border);border-radius:9px;padding:12px;background:#fff;color:var(--text)}input[type=file]{padding:10px}button{border:0;border-radius:9px;padding:13px 18px;font:inherit;font-weight:700;cursor:pointer;min-height:46px}.primary{background:var(--accent);color:#fff;width:100%}.secondary{background:#eef1f4;color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}.hidden{display:none!important}.top{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:18px}.badge{padding:6px 10px;border-radius:999px;background:var(--accent2);font-size:.9rem;font-weight:700}.progress{height:9px;background:#e8ebee;border-radius:99px;overflow:hidden;margin:10px 0 25px}.progress>div{height:100%;background:var(--accent);transition:width .2s}.question{font-size:1.12rem;line-height:1.6;white-space:pre-line;margin:0 0 18px}.option{width:100%;display:block;text-align:left;background:#fff;border:1px solid var(--border);margin:9px 0;padding:14px 15px;border-radius:10px;color:var(--text)}.option:hover{border-color:var(--accent)}.option.selected{border:2px solid var(--accent);background:var(--accent2);padding:13px 14px}.actions{margin-top:20px}.message{margin-top:12px;min-height:24px;color:var(--bad)}.result{text-align:center}.result-icon{font-size:4rem;font-weight:800}.result.ok .result-icon{color:var(--good)}.result.bad .result-icon{color:var(--bad)}.result-box{padding:18px;border-radius:12px;margin:18px 0;text-align:left;background:#f7f8fa}.small{font-size:.9rem}.loader{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:560px){main{width:calc(100% - 14px);margin:8px auto 30px}.card{padding:19px}h1{font-size:1.4rem}.question{font-size:1.05rem}}
+</style>
+</head>
+<body>
+<main>
+<section id="setup" class="card">
+<h1>Generador de exámenes</h1>
+<p class="muted">Carga uno o varios PDF. Se generan 50 preguntas nuevas cada vez que comienza un intento.</p>
+<label for="studentName">Nombre del alumno</label><input id="studentName" type="text" maxlength="100" autocomplete="off" placeholder="Escribe tu nombre">
+<label for="pdfFiles">Documentos PDF</label><input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple>
+<p id="fileInfo" class="muted small">No hay archivos seleccionados.</p>
+<button id="startBtn" class="primary" type="button">Generar examen</button><div id="setupMessage" class="message" aria-live="polite"></div>
+</section>
+<section id="exam" class="card hidden">
+<div class="top"><strong id="studentLabel"></strong><span id="roundBadge" class="badge"></span></div>
+<div class="top small muted"><span id="questionCounter"></span><span id="errorCounter"></span></div>
+<div class="progress"><div id="progressBar" style="width:0%"></div></div>
+<h2 id="questionText" class="question"></h2><div id="options" aria-live="polite"></div>
+<div class="actions"><button id="nextBtn" class="primary" type="button" disabled>Siguiente</button></div>
+</section>
+<section id="result" class="card result hidden">
+<div id="resultIcon" class="result-icon"></div><h1 id="resultTitle"></h1><p id="resultText"></p><div id="resultDetails" class="result-box"></div><button id="restartBtn" class="primary" type="button">Comenzar un nuevo examen</button>
+</section>
+</main>
+<script type="module">
+(() => {
+"use strict";
+const PDFJS="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm";
+let pdfjs=null;
+const $=id=>document.getElementById(id);
+const state={name:"",files:[],questions:[],round:1,index:0,roundErrors:0,totalErrors:0,firstWrong:[],selected:null};
+function show(id){["setup","exam","result"].forEach(x=>$(x).classList.toggle("hidden",x!==id));scrollTo(0,0)}
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function normalize(s){return s.replace(/\u00ad/g,"").replace(/\s+/g," ").trim()}
+function words(s){return s.match(/\S+/g)||[]}
+function clean(s){return s.replace(/^[¿¡"“”‘’([{]+|[.,;:!?)}\]"“”‘’]+$/g,"")}
+function splitSentences(text){let a=text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡])/).map(normalize).filter(s=>s.length>=45&&s.length<=550);if(a.length>=50)return a;let w=words(text),b=[];for(let i=0;i<w.length;i+=45){let x=w.slice(i,i+65).join(" ");if(x.length>=80)b.push(x)}return [...a,...b]}
+function buildCandidates(text){const out=[],seen=new Set();for(const s of shuffle(splitSentences(text))){const w=words(s);if(w.length<10)continue;const positions=[];for(let i=2;i<w.length-3;i++){let t=clean(w[i]);if(t.length>=4&&!/^\d+$/.test(t))positions.push(i)}if(!positions.length)continue;let start=positions[Math.floor(Math.random()*positions.length)],len=1;if(Math.random()<.45&&start+1<w.length-2)len++;if(Math.random()<.2&&start+2<w.length-2)len++;let answer=w.slice(start,start+len).join(" ").replace(/[.,;:!?]+$/g,"").trim(),key=answer.toLocaleLowerCase("es");if(answer.length<4||answer.length>90||seen.has(key))continue;let before=w.slice(0,start).join(" "),after=w.slice(start+len).join(" ");if(before.length<12||after.length<5)continue;out.push({question:"Según el documento, completa correctamente la afirmación:\n\n"+before+" _____ "+after,answer,source:s});seen.add(key)}return out}
+function makeQuestions(text){const c=buildCandidates(text);if(c.length<50)return null;const chosen=shuffle(c).slice(0,50),answers=c.map(x=>x.answer);return chosen.map((q,i)=>({id:Date.now()+"_"+i+"_"+Math.random(),question:q.question,answer:q.answer,source:q.source,options:shuffle([q.answer,...shuffle(answers.filter(a=>a.toLocaleLowerCase("es")!==q.answer.toLocaleLowerCase("es"))).slice(0,3)]),wrong:false}))}
+async function loadPDF(){if(pdfjs)return pdfjs;try{pdfjs=await import(PDFJS);pdfjs.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";return pdfjs}catch(e){throw new Error("No se ha podido cargar el lector de PDF. Comprueba la conexión a Internet.")}}
+async function extract(file){const lib=await loadPDF(),data=new Uint8Array(await file.arrayBuffer()),pdf=await lib.getDocument({data}).promise,pages=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),c=await page.getTextContent();pages.push(c.items.map(x=>x.str||"").join(" "))}return pages.join("\n")}
+async function allPDFs(files){let text="";for(let i=0;i<files.length;i++){$("setupMessage").innerHTML='<span class="loader"></span>Leyendo PDF '+(i+1)+" de "+files.length+"…";text+="\n"+await extract(files[i])}return normalize(text)}
+function render(){const q=state.questions[state.index];state.selected=null;$('studentLabel').textContent=state.name;$('roundBadge').textContent=state.round===1?"Ronda 1 · 50 preguntas":"Ronda 2 · preguntas falladas";$('questionCounter').textContent="Pregunta "+(state.index+1)+" de "+state.questions.length;$('errorCounter').textContent="Fallos en esta ronda: "+state.roundErrors;$('progressBar').style.width=(state.index/state.questions.length*100)+"%";$('questionText').textContent=q.question;$('options').innerHTML="";q.options.forEach((o,i)=>{const b=document.createElement("button");b.type="button";b.className="option";b.textContent=String.fromCharCode(65+i)+") "+o;b.onclick=()=>{state.selected=i;document.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");$('nextBtn').disabled=false};$('options').appendChild(b)});$('nextBtn').textContent=state.index===state.questions.length-1?"Finalizar ronda":"Siguiente"}
+function result(ok,title,text,details){show("result");$('result').classList.toggle("ok",ok);$('result').classList.toggle("bad",!ok);$('resultIcon').textContent=ok?"✓":"×";$('resultTitle').textContent=title;$('resultText').textContent=text;$('resultDetails').textContent=details}
+function finish(){if(state.round===1){state.firstWrong=state.questions.filter(q=>q.wrong);if(state.roundErrors>=10){result(false,"No superado","Has cometido "+state.roundErrors+" fallos en la primera ronda.","Con 10 o más fallos debes comenzar un nuevo examen desde cero.");return}if(state.firstWrong.length===0){result(true,"¡Aprobado!","Has respondido correctamente las 50 preguntas.","Nota final: 10/10.");return}state.round=2;state.questions=shuffle(state.firstWrong).map(q=>({...q,wrong:false}));state.index=0;state.roundErrors=0;show("exam");render();return}const grade=Math.max(0,10-state.totalErrors/5).toFixed(1);if(state.roundErrors<=2)result(true,"¡Aprobado!",state.name+", has superado las dos rondas.","Nota final: "+grade+"/10 · Fallos totales: "+state.totalErrors+" de 50.");else result(false,"No superado",state.name+", has cometido "+state.roundErrors+" fallos en la segunda ronda.","El máximo permitido en la segunda ronda es 2. Debes comenzar de nuevo.")}
+$('pdfFiles').addEventListener('change',()=>{state.files=[...$('pdfFiles').files];$('fileInfo').textContent=state.files.length?state.files.map(f=>f.name).join(" · "):"No hay archivos seleccionados.";$('setupMessage').textContent=""});
+$('startBtn').onclick=async()=>{const name=$('studentName').value.trim(),files=[...$('pdfFiles').files];$('setupMessage').textContent="";if(!name){$('setupMessage').textContent="Escribe el nombre del alumno.";$('studentName').focus();return}if(!files.length){$('setupMessage').textContent="Selecciona al menos un PDF.";return}$('startBtn').disabled=true;try{const text=await allPDFs(files);if(text.length<1200)throw new Error("El PDF contiene muy poco texto extraíble. Si es un PDF escaneado como imagen, esta versión no puede leerlo.");$('setupMessage').innerHTML='<span class="loader"></span>Generando preguntas aleatorias…';const qs=makeQuestions(text);if(!qs)throw new Error("No se han podido generar 50 preguntas distintas a partir del texto. Usa documentos con suficiente contenido textual.");state.name=name;state.questions=qs;state.round=1;state.index=0;state.roundErrors=0;state.totalErrors=0;state.firstWrong=[];state.selected=null;show("exam");render()}catch(e){$('setupMessage').textContent=e.message||"No se ha podido generar el examen."}finally{$('startBtn').disabled=false}};
+$('nextBtn').onclick=()=>{if(state.selected===null)return;const q=state.questions[state.index],correct=q.options[state.selected]===q.answer;q.wrong=!correct;if(!correct){state.roundErrors++;state.totalErrors++}if(state.index<state.questions.length-1){state.index++;render()}else finish()};
+$('restartBtn').onclick=()=>{state.questions=[];state.index=0;state.round=1;state.roundErrors=0;state.totalErrors=0;state.firstWrong=[];state.selected=null;$('setupMessage').textContent="Genera un examen nuevo: las preguntas volverán a aleatorizarse.";show("setup")};
+})();
+</script>
+</body>
+</html>
