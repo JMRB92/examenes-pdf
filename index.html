@@ -3,58 +3,641 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Generador de exámenes PDF</title>
+<title>ExamGen AI - Generador Inteligente de Exámenes</title>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#5f6b76;--border:#d8dee4;--accent:#1769aa;--accent2:#e8f1f8;--good:#1f7a45;--bad:#b42318}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}main{width:min(900px,calc(100% - 24px));margin:24px auto 50px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px}h1{font-size:1.6rem;margin:0 0 8px}h2{font-size:1.2rem;margin:0 0 18px}p{line-height:1.5}.muted{color:var(--muted)}label{display:block;font-weight:650;margin:18px 0 7px}input[type=text],input[type=file]{width:100%;font:inherit;border:1px solid var(--border);border-radius:9px;padding:12px;background:#fff;color:var(--text)}input[type=file]{padding:10px}button{border:0;border-radius:9px;padding:13px 18px;font:inherit;font-weight:700;cursor:pointer;min-height:46px}.primary{background:var(--accent);color:#fff;width:100%}.secondary{background:#eef1f4;color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}.hidden{display:none!important}.top{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:18px}.badge{padding:6px 10px;border-radius:999px;background:var(--accent2);font-size:.9rem;font-weight:700}.progress{height:9px;background:#e8ebee;border-radius:99px;overflow:hidden;margin:10px 0 25px}.progress>div{height:100%;background:var(--accent);transition:width .2s}.question{font-size:1.12rem;line-height:1.6;white-space:pre-line;margin:0 0 18px}.option{width:100%;display:block;text-align:left;background:#fff;border:1px solid var(--border);margin:9px 0;padding:14px 15px;border-radius:10px;color:var(--text)}.option:hover{border-color:var(--accent)}.option.selected{border:2px solid var(--accent);background:var(--accent2);padding:13px 14px}.actions{margin-top:20px}.message{margin-top:12px;min-height:24px;color:var(--bad)}.result{text-align:center}.result-icon{font-size:4rem;font-weight:800}.result.ok .result-icon{color:var(--good)}.result.bad .result-icon{color:var(--bad)}.result-box{padding:18px;border-radius:12px;margin:18px 0;text-align:left;background:#f7f8fa}.small{font-size:.9rem}.loader{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:560px){main{width:calc(100% - 14px);margin:8px auto 30px}.card{padding:19px}h1{font-size:1.4rem}.question{font-size:1.05rem}}
+:root{--bg:#f0f4f8;--card:#ffffff;--text:#1e293b;--muted:#64748b;--border:#cbd5e1;--accent:#2563eb;--accent-hover:#1d4ed8;--accent-light:#eff6ff;--good:#16a34a;--good-light:#f0fdf4;--bad:#dc2626;--bad-light:#fef2f2;--warning:#d97706;--shadow:0 10px 25px -5px rgba(0,0,0,0.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+main{width:min(850px,calc(100% - 32px));margin:32px auto 60px;flex:1}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;box-shadow:var(--shadow)}
+.app-brand{text-align:center;margin-bottom:28px}
+.app-brand .icon{width:64px;height:64px;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px;box-shadow:0 8px 16px rgba(37,99,235,0.3)}
+h1{font-size:1.75rem;margin:0 0 6px;color:#0f172a;font-weight:800}
+h2{font-size:1.25rem;margin:0 0 16px;color:#0f172a}
+p{line-height:1.6;margin:0 0 16px}
+.muted{color:var(--muted)}
+label{display:block;font-weight:600;margin:18px 0 8px;font-size:.95rem}
+input[type=text],input[type=file],select{width:100%;font:inherit;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;background:#fff;color:var(--text);transition:border-color .2s}
+input[type=text]:focus,select:focus{border-color:var(--accent);outline:none}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+button{border:0;border-radius:10px;padding:14px 20px;font:inherit;font-weight:700;cursor:pointer;min-height:48px;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.primary{background:var(--accent);color:#fff;width:100%}
+.primary:hover:not(:disabled){background:var(--accent-hover)}
+.secondary{background:#f1f5f9;color:var(--text);border:1px solid var(--border)}
+.secondary:hover:not(:disabled){background:#e2e8f0}
+.btn-row{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap}
+button:disabled{opacity:.55;cursor:not-allowed}
+.hidden{display:none!important}
+.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:18px}
+.badge{padding:6px 14px;border-radius:999px;background:var(--accent-light);color:var(--accent);font-size:.85rem;font-weight:700;border:1px solid rgba(37,99,235,0.2)}
+.timer-container{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.1rem;color:var(--accent)}
+.timer-container.urgent{color:var(--bad);animation:pulse 1s infinite}
+@keyframes pulse{0%{opacity:1}50%{opacity:.5}100%{opacity:1}}
+.progress-bar-bg{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:12px 0 24px}
+.progress-bar-fill{height:100%;background:var(--accent);transition:width .3s}
+.timer-bar-fill{height:100%;background:var(--accent);transition:width 1s linear}
+.question{font-size:1.15rem;line-height:1.6;margin:0 0 20px;font-weight:600}
+.option{width:100%;display:block;text-align:left;background:#fff;border:1.5px solid var(--border);margin:10px 0;padding:14px 18px;border-radius:12px;color:var(--text);font-size:1rem;line-height:1.4;transition:all .2s}
+.option:hover:not(.locked){border-color:var(--accent);background:var(--accent-light)}
+.option.correct{border-color:var(--good)!important;background:var(--good-light)!important;color:var(--good);font-weight:700}
+.option.incorrect{border-color:var(--bad)!important;background:var(--bad-light)!important;color:var(--bad);font-weight:700}
+.explanation-box{background:#f8fafc;border-left:4px solid var(--accent);padding:16px;border-radius:8px;margin:20px 0;font-size:0.95rem;line-height:1.5;color:#334155}
+.explanation-box.wrong{border-left-color:var(--bad);background:var(--bad-light)}
+.explanation-box.right{border-left-color:var(--good);background:var(--good-light)}
+.message{margin-top:14px;min-height:24px;color:var(--bad);font-weight:600}
+.report-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:28px;margin:20px 0}
+.report-header{text-align:center;border-bottom:2px dashed var(--border);padding-bottom:20px;margin-bottom:20px}
+.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
+.report-stat{background:#f8fafc;padding:16px;border-radius:12px;border:1px solid var(--border)}
+.report-stat .val{font-size:1.5rem;font-weight:800;color:var(--accent);margin-top:4px}
+.grade-badge{display:inline-block;padding:8px 20px;border-radius:999px;font-size:1.2rem;font-weight:800;margin-top:10px}
+.grade-pass{background:var(--good-light);color:var(--good);border:1.5px solid var(--good)}
+.grade-fail{background:var(--bad-light);color:var(--bad);border:1.5px solid var(--bad)}
+.review-item{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;text-align:left}
+.review-item.ok{border-left:5px solid var(--good)}
+.review-item.fail{border-left:5px solid var(--bad)}
+.loader{display:inline-block;width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:600px){.grid-2{grid-template-columns:1fr}.card{padding:20px}.btn-row{flex-direction:column}button{width:100%}}
 </style>
 </head>
 <body>
 <main>
+<!-- 1. PANTALLA DE INICIO / SETUP -->
 <section id="setup" class="card">
-<h1>Generador de exámenes</h1>
-<p class="muted">Carga uno o varios PDF. Se generan 50 preguntas nuevas cada vez que comienza un intento.</p>
-<label for="studentName">Nombre del alumno</label><input id="studentName" type="text" maxlength="100" autocomplete="off" placeholder="Escribe tu nombre">
-<label for="pdfFiles">Documentos PDF</label><input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple>
-<p id="fileInfo" class="muted small">No hay archivos seleccionados.</p>
-<button id="startBtn" class="primary" type="button">Generar examen</button><div id="setupMessage" class="message" aria-live="polite"></div>
+  <div class="app-brand">
+    <div class="icon">📝</div>
+    <h1>ExamGen AI</h1>
+    <p class="muted">Generador de Exámenes Inteligentes desde PDF</p>
+  </div>
+  
+  <label for="studentName">Nombre y Apellidos del Alumno *</label>
+  <input id="studentName" type="text" maxlength="100" placeholder="Ej. Maria García Pérez" required>
+  
+  <div class="grid-2">
+    <div>
+      <label for="questionCount">Número de preguntas</label>
+      <select id="questionCount">
+        <option value="10">10 Preguntas</option>
+        <option value="20" selected>20 Preguntas</option>
+        <option value="30">30 Preguntas</option>
+        <option value="50">50 Preguntas</option>
+      </select>
+    </div>
+    <div>
+      <label for="pdfFiles">Documentos PDF de estudio *</label>
+      <input id="pdfFiles" type="file" accept=".pdf,application/pdf" multiple>
+    </div>
+  </div>
+  
+  <p id="fileInfo" class="muted" style="font-size:0.9rem; margin-top:8px;">No se ha seleccionado ningún archivo.</p>
+  
+  <button id="startBtn" class="primary" type="button" style="margin-top:20px;">Comenzar Examen</button>
+  <div id="setupMessage" class="message" aria-live="polite"></div>
 </section>
+
+<!-- 2. PANTALLA DE EXAMEN -->
 <section id="exam" class="card hidden">
-<div class="top"><strong id="studentLabel"></strong><span id="roundBadge" class="badge"></span></div>
-<div class="top small muted"><span id="questionCounter"></span><span id="errorCounter"></span></div>
-<div class="progress"><div id="progressBar" style="width:0%"></div></div>
-<h2 id="questionText" class="question"></h2><div id="options" aria-live="polite"></div>
-<div class="actions"><button id="nextBtn" class="primary" type="button" disabled>Siguiente</button></div>
+  <div class="top">
+    <div>
+      <strong id="studentLabel" style="font-size:1.1rem;"></strong>
+      <div id="fileLabel" class="muted" style="font-size:0.85rem;"></div>
+    </div>
+    <span id="roundBadge" class="badge">Ronda 1</span>
+  </div>
+
+  <div class="top" style="margin-bottom:8px;">
+    <span id="questionCounter" class="muted" style="font-weight:600;"></span>
+    <div id="timerDisplay" class="timer-container">
+      ⏱️ <span id="timerText">01:00</span>
+    </div>
+  </div>
+
+  <!-- Barra de tiempo -->
+  <div class="progress-bar-bg"><div id="timerBar" class="timer-bar-fill" style="width:100%"></div></div>
+  <!-- Barra de progreso -->
+  <div class="progress-bar-bg" style="height:4px; margin-top:-16px;"><div id="progressBar" class="progress-bar-fill" style="width:0%"></div></div>
+
+  <h2 id="questionText" class="question"></h2>
+  <div id="options" aria-live="polite"></div>
+
+  <!-- Retroalimentación explicativa inmediata -->
+  <div id="explanationBox" class="explanation-box hidden"></div>
+
+  <div style="margin-top:24px;">
+    <button id="nextBtn" class="primary" type="button">Siguiente Pregunta</button>
+  </div>
 </section>
-<section id="result" class="card result hidden">
-<div id="resultIcon" class="result-icon"></div><h1 id="resultTitle"></h1><p id="resultText"></p><div id="resultDetails" class="result-box"></div><button id="restartBtn" class="primary" type="button">Comenzar un nuevo examen</button>
+
+<!-- 3. PANTALLA DE RESULTADOS Y REVISIÓN -->
+<section id="result" class="card hidden">
+  <div class="app-brand" style="margin-bottom:12px;">
+    <h1>Informe de Evaluación</h1>
+    <p class="muted">Resumen oficial del rendimiento académico</p>
+  </div>
+
+  <div id="reportCard" class="report-card">
+    <div class="report-header">
+      <h2 id="repStudentName" style="margin:0; font-size:1.5rem; color:var(--accent);"></h2>
+      <p id="repDocName" class="muted" style="margin:6px 0 0; font-size:0.95rem;"></p>
+      <div id="repGradeBadge" class="grade-badge"></div>
+    </div>
+
+    <div class="report-grid">
+      <div class="report-stat">
+        <span class="muted" style="font-size:0.85rem;">Total de preguntas</span>
+        <div id="repTotalQs" class="val">0</div>
+      </div>
+      <div class="report-stat">
+        <span class="muted" style="font-size:0.85rem;">Ronda 1 (Aciertos / Fallos)</span>
+        <div id="repR1Stats" class="val" style="color:var(--text);">0 / 0</div>
+      </div>
+      <div class="report-stat">
+        <span class="muted" style="font-size:0.85rem;">Ronda 2 (Aciertos / Fallos)</span>
+        <div id="repR2Stats" class="val" style="color:var(--text);">N/A</div>
+      </div>
+      <div class="report-stat">
+        <span class="muted" style="font-size:0.85rem;">Calificación Final</span>
+        <div id="repFinalScore" class="val">0.0 / 10</div>
+      </div>
+    </div>
+
+    <div id="repCriteriaText" style="background:#f1f5f9; padding:14px; border-radius:10px; font-size:0.9rem; line-height:1.5; color:#334155;"></div>
+  </div>
+
+  <div class="btn-row">
+    <button id="toggleReviewBtn" class="secondary" type="button" style="flex:1;">🔍 Revisar Examen Completo</button>
+  </div>
+
+  <!-- Contenedor desplegable de revisión paso a paso -->
+  <div id="reviewContainer" class="hidden" style="margin-top:24px;">
+    <h3 style="margin-bottom:16px;">Revisión Pregunta por Pregunta</h3>
+    <div id="reviewList"></div>
+  </div>
+
+  <div class="btn-row">
+    <button id="downloadPdfBtn" class="secondary" type="button" style="flex:1;">📄 Descargar PDF</button>
+    <button id="downloadImgBtn" class="secondary" type="button" style="flex:1;">🖼️ Descargar Imagen</button>
+  </div>
+  <div class="btn-row">
+    <button id="restartBtn" class="primary" type="button">Comenzar un Nuevo Examen</button>
+  </div>
 </section>
 </main>
+
 <script type="module">
 (() => {
 "use strict";
-const PDFJS="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm";
-let pdfjs=null;
-const $=id=>document.getElementById(id);
-const state={name:"",files:[],questions:[],round:1,index:0,roundErrors:0,totalErrors:0,firstWrong:[],selected:null};
-function show(id){["setup","exam","result"].forEach(x=>$(x).classList.toggle("hidden",x!==id));scrollTo(0,0)}
-function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function normalize(s){return s.replace(/\u00ad/g,"").replace(/\s+/g," ").trim()}
-function words(s){return s.match(/\S+/g)||[]}
-function clean(s){return s.replace(/^[¿¡"“”‘’([{]+|[.,;:!?)}\]"“”‘’]+$/g,"")}
-function splitSentences(text){let a=text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡])/).map(normalize).filter(s=>s.length>=45&&s.length<=550);if(a.length>=50)return a;let w=words(text),b=[];for(let i=0;i<w.length;i+=45){let x=w.slice(i,i+65).join(" ");if(x.length>=80)b.push(x)}return [...a,...b]}
-function buildCandidates(text){const out=[],seen=new Set();for(const s of shuffle(splitSentences(text))){const w=words(s);if(w.length<10)continue;const positions=[];for(let i=2;i<w.length-3;i++){let t=clean(w[i]);if(t.length>=4&&!/^\d+$/.test(t))positions.push(i)}if(!positions.length)continue;let start=positions[Math.floor(Math.random()*positions.length)],len=1;if(Math.random()<.45&&start+1<w.length-2)len++;if(Math.random()<.2&&start+2<w.length-2)len++;let answer=w.slice(start,start+len).join(" ").replace(/[.,;:!?]+$/g,"").trim(),key=answer.toLocaleLowerCase("es");if(answer.length<4||answer.length>90||seen.has(key))continue;let before=w.slice(0,start).join(" "),after=w.slice(start+len).join(" ");if(before.length<12||after.length<5)continue;out.push({question:"Según el documento, completa correctamente la afirmación:\n\n"+before+" _____ "+after,answer,source:s});seen.add(key)}return out}
-function makeQuestions(text){const c=buildCandidates(text);if(c.length<50)return null;const chosen=shuffle(c).slice(0,50),answers=c.map(x=>x.answer);return chosen.map((q,i)=>({id:Date.now()+"_"+i+"_"+Math.random(),question:q.question,answer:q.answer,source:q.source,options:shuffle([q.answer,...shuffle(answers.filter(a=>a.toLocaleLowerCase("es")!==q.answer.toLocaleLowerCase("es"))).slice(0,3)]),wrong:false}))}
-async function loadPDF(){if(pdfjs)return pdfjs;try{pdfjs=await import(PDFJS);pdfjs.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";return pdfjs}catch(e){throw new Error("No se ha podido cargar el lector de PDF. Comprueba la conexión a Internet.")}}
-async function extract(file){const lib=await loadPDF(),data=new Uint8Array(await file.arrayBuffer()),pdf=await lib.getDocument({data}).promise,pages=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),c=await page.getTextContent();pages.push(c.items.map(x=>x.str||"").join(" "))}return pages.join("\n")}
-async function allPDFs(files){let text="";for(let i=0;i<files.length;i++){$("setupMessage").innerHTML='<span class="loader"></span>Leyendo PDF '+(i+1)+" de "+files.length+"…";text+="\n"+await extract(files[i])}return normalize(text)}
-function render(){const q=state.questions[state.index];state.selected=null;$('studentLabel').textContent=state.name;$('roundBadge').textContent=state.round===1?"Ronda 1 · 50 preguntas":"Ronda 2 · preguntas falladas";$('questionCounter').textContent="Pregunta "+(state.index+1)+" de "+state.questions.length;$('errorCounter').textContent="Fallos en esta ronda: "+state.roundErrors;$('progressBar').style.width=(state.index/state.questions.length*100)+"%";$('questionText').textContent=q.question;$('options').innerHTML="";q.options.forEach((o,i)=>{const b=document.createElement("button");b.type="button";b.className="option";b.textContent=String.fromCharCode(65+i)+") "+o;b.onclick=()=>{state.selected=i;document.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");$('nextBtn').disabled=false};$('options').appendChild(b)});$('nextBtn').textContent=state.index===state.questions.length-1?"Finalizar ronda":"Siguiente"}
-function result(ok,title,text,details){show("result");$('result').classList.toggle("ok",ok);$('result').classList.toggle("bad",!ok);$('resultIcon').textContent=ok?"✓":"×";$('resultTitle').textContent=title;$('resultText').textContent=text;$('resultDetails').textContent=details}
-function finish(){if(state.round===1){state.firstWrong=state.questions.filter(q=>q.wrong);if(state.roundErrors>=10){result(false,"No superado","Has cometido "+state.roundErrors+" fallos en la primera ronda.","Con 10 o más fallos debes comenzar un nuevo examen desde cero.");return}if(state.firstWrong.length===0){result(true,"¡Aprobado!","Has respondido correctamente las 50 preguntas.","Nota final: 10/10.");return}state.round=2;state.questions=shuffle(state.firstWrong).map(q=>({...q,wrong:false}));state.index=0;state.roundErrors=0;show("exam");render();return}const grade=Math.max(0,10-state.totalErrors/5).toFixed(1);if(state.roundErrors<=2)result(true,"¡Aprobado!",state.name+", has superado las dos rondas.","Nota final: "+grade+"/10 · Fallos totales: "+state.totalErrors+" de 50.");else result(false,"No superado",state.name+", has cometido "+state.roundErrors+" fallos en la segunda ronda.","El máximo permitido en la segunda ronda es 2. Debes comenzar de nuevo.")}
-$('pdfFiles').addEventListener('change',()=>{state.files=[...$('pdfFiles').files];$('fileInfo').textContent=state.files.length?state.files.map(f=>f.name).join(" · "):"No hay archivos seleccionados.";$('setupMessage').textContent=""});
-$('startBtn').onclick=async()=>{const name=$('studentName').value.trim(),files=[...$('pdfFiles').files];$('setupMessage').textContent="";if(!name){$('setupMessage').textContent="Escribe el nombre del alumno.";$('studentName').focus();return}if(!files.length){$('setupMessage').textContent="Selecciona al menos un PDF.";return}$('startBtn').disabled=true;try{const text=await allPDFs(files);if(text.length<1200)throw new Error("El PDF contiene muy poco texto extraíble. Si es un PDF escaneado como imagen, esta versión no puede leerlo.");$('setupMessage').innerHTML='<span class="loader"></span>Generando preguntas aleatorias…';const qs=makeQuestions(text);if(!qs)throw new Error("No se han podido generar 50 preguntas distintas a partir del texto. Usa documentos con suficiente contenido textual.");state.name=name;state.questions=qs;state.round=1;state.index=0;state.roundErrors=0;state.totalErrors=0;state.firstWrong=[];state.selected=null;show("exam");render()}catch(e){$('setupMessage').textContent=e.message||"No se ha podido generar el examen."}finally{$('startBtn').disabled=false}};
-$('nextBtn').onclick=()=>{if(state.selected===null)return;const q=state.questions[state.index],correct=q.options[state.selected]===q.answer;q.wrong=!correct;if(!correct){state.roundErrors++;state.totalErrors++}if(state.index<state.questions.length-1){state.index++;render()}else finish()};
-$('restartBtn').onclick=()=>{state.questions=[];state.index=0;state.round=1;state.roundErrors=0;state.totalErrors=0;state.firstWrong=[];state.selected=null;$('setupMessage').textContent="Genera un examen nuevo: las preguntas volverán a aleatorizarse.";show("setup")};
+const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm";
+let pdfjs = null;
+
+const $ = id => document.getElementById(id);
+
+const state = {
+  name: "",
+  files: [],
+  docNames: "",
+  totalQsTarget: 20,
+  questions: [],
+  roundHistory: [],
+  round: 1,
+  index: 0,
+  r1Correct: 0,
+  r1Wrong: 0,
+  r2Correct: 0,
+  r2Wrong: 0,
+  r1WrongQuestions: [],
+  answered: false,
+  timer: null,
+  timeLeft: 60
+};
+
+function show(id) {
+  ["setup", "exam", "result"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+  window.scrollTo(0, 0);
+}
+
+function shuffle(array) {
+  const a = [...array];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function normalize(s) {
+  return s.replace(/\u00ad/g, "").replace(/\s+/g, " ").trim();
+}
+
+async function loadPDF() {
+  if (pdfjs) return pdfjs;
+  try {
+    pdfjs = await import(PDFJS);
+    pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+    return pdfjs;
+  } catch (e) {
+    throw new Error("No se ha podido cargar el lector PDF. Verifica tu conexión.");
+  }
+}
+
+async function extractText(file) {
+  const lib = await loadPDF();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await lib.getDocument({ data }).promise;
+  const pages = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    pages.push(content.items.map(x => x.str || "").join(" "));
+  }
+  return pages.join("\n");
+}
+
+async function readAllPDFs(files) {
+  let fullText = "";
+  for (let i = 0; i < files.length; i++) {
+    $("setupMessage").innerHTML = `<span class="loader"></span>Procesando PDF ${i + 1} de ${files.length}…`;
+    fullText += "\n" + await extractText(files[i]);
+  }
+  return normalize(fullText);
+}
+
+function generateAIConceptualQuestions(text, count) {
+  const paragraphs = text.split(/(?:\r?\n){2,}|\.\s+(?=[A-ZÁÉÍÓÚÑ])/)
+    .map(normalize)
+    .filter(p => p.length >= 80 && p.length <= 800);
+
+  if (paragraphs.length < 5) {
+    throw new Error("El documento no contiene suficiente texto extenso para sintetizar preguntas de calidad.");
+  }
+
+  const templates = [
+    {
+      q: (concept) => `¿Cuál de las siguientes afirmaciones describe con mayor precisión el concepto de "${concept}" según el texto?`,
+      type: "definition"
+    },
+    {
+      q: (concept) => `En relación con ${concept}, ¿cuál es el objetivo fundamental indicado en la documentación?`,
+      type: "objective"
+    },
+    {
+      q: (concept) => `¿Qué rasgo o característica clave destaca el documento respecto a ${concept}?`,
+      type: "feature"
+    }
+  ];
+
+  const candidates = [];
+  const usedConcepts = new Set();
+
+  for (const para of shuffle(paragraphs)) {
+    const matches = para.match(/(?:el|la|los|las|un|una)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]{4,20}(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]{4,20}){0,2})/g);
+    if (!matches) continue;
+
+    let concept = matches[Math.floor(Math.random() * matches.length)].replace(/^(el|la|los|las|un|una)\s+/i, "").trim();
+    if (concept.length < 4 || usedConcepts.has(concept.toLowerCase())) continue;
+
+    usedConcepts.add(concept.toLowerCase());
+
+    let correctAnswer = para;
+    if (correctAnswer.length > 140) {
+      correctAnswer = correctAnswer.substring(0, 137) + "...";
+    }
+
+    const distractors = shuffle([
+      "Se aplica exclusivamente cuando se anula la fase de revisión previa.",
+      "Es un principio secundario que no afecta al resultado final del proceso.",
+      "Requiere una autorización extraordinaria previa para su ejecución.",
+      "Corresponde a una norma transitoria sin vigencia en el procedimiento actual.",
+      "Limita el alcance del análisis a factores de carácter estrictamente externo."
+    ]).slice(0, 3);
+
+    const tpl = templates[Math.floor(Math.random() * templates.length)];
+
+    candidates.push({
+      question: tpl.q(concept),
+      answer: correctAnswer,
+      explanation: `Justificación del texto: "${para.length > 200 ? para.substring(0, 197) + '...' : para}"`,
+      options: shuffle([correctAnswer, ...distractors]),
+      userSelected: null,
+      wrong: false
+    });
+
+    if (candidates.length >= count * 2) break;
+  }
+
+  return shuffle(candidates).slice(0, count);
+}
+
+// TEMPORIZADOR
+function startTimer() {
+  clearInterval(state.timer);
+  state.timeLeft = 60;
+  updateTimerUI();
+
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    updateTimerUI();
+
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timer);
+      handleTimeout();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(state.timer);
+}
+
+function updateTimerUI() {
+  const mins = Math.floor(state.timeLeft / 60);
+  const secs = state.timeLeft % 60;
+  $('timerText').textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  $('timerBar').style.width = `${(state.timeLeft / 60) * 100}%`;
+
+  const container = $('timerDisplay');
+  if (state.timeLeft <= 10) {
+    container.classList.add('urgent');
+    $('timerBar').style.background = 'var(--bad)';
+  } else {
+    container.classList.remove('urgent');
+    $('timerBar').style.background = 'var(--accent)';
+  }
+}
+
+function handleTimeout() {
+  if (state.answered) return;
+  evaluateAnswer(null, true);
+}
+
+function renderQuestion() {
+  state.answered = false;
+  $('explanationBox').className = "explanation-box hidden";
+  $('explanationBox').innerHTML = "";
+  
+  startTimer();
+  const q = state.questions[state.index];
+
+  $('studentLabel').textContent = state.name;
+  $('fileLabel').textContent = `Documento: ${state.docNames}`;
+  $('roundBadge').textContent = state.round === 1 ? `Ronda 1 de 2` : `Ronda 2 (Recuperación)`;
+  $('questionCounter').textContent = `Pregunta ${state.index + 1} de ${state.questions.length}`;
+  
+  $('progressBar').style.width = `${(state.index / state.questions.length) * 100}%`;
+  $('questionText').textContent = q.question;
+  
+  $('options').innerHTML = "";
+  q.options.forEach((opt, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "option";
+    btn.textContent = `${String.fromCharCode(65 + idx)}) ${opt}`;
+    btn.onclick = () => evaluateAnswer(idx, false);
+    $('options').appendChild(btn);
+  });
+
+  $('nextBtn').style.display = "none";
+}
+
+// EVALUACIÓN E RETROALIMENTACIÓN INMEDIATA (MEJORA 1)
+function evaluateAnswer(selectedIdx, isTimeout) {
+  if (state.answered) return;
+  state.answered = true;
+  stopTimer();
+
+  const q = state.questions[state.index];
+  const optionBtns = document.querySelectorAll(".option");
+  const isCorrect = !isTimeout && q.options[selectedIdx] === q.answer;
+
+  q.userSelected = isTimeout ? "Tiempo Agotado" : q.options[selectedIdx];
+  q.wrong = !isCorrect;
+
+  if (state.round === 1) {
+    if (isCorrect) state.r1Correct++; else state.r1Wrong++;
+  } else {
+    if (isCorrect) state.r2Correct++; else state.r2Wrong++;
+  }
+
+  // Guardar en el historial completo para la revisión
+  state.roundHistory.push({ ...q, round: state.round });
+
+  // Marcar colores en las opciones
+  optionBtns.forEach((btn, idx) => {
+    btn.classList.add("locked");
+    btn.disabled = true;
+    if (q.options[idx] === q.answer) {
+      btn.classList.add("correct");
+    } else if (idx === selectedIdx && !isCorrect) {
+      btn.classList.add("incorrect");
+    }
+  });
+
+  // Mostrar la explicación justificada
+  const expBox = $('explanationBox');
+  expBox.classList.remove("hidden");
+  if (isCorrect) {
+    expBox.classList.add("right");
+    expBox.innerHTML = `<strong>¡Respuesta Correcta! 🎉</strong><br>${q.explanation}`;
+  } else {
+    expBox.classList.add("wrong");
+    expBox.innerHTML = `<strong>${isTimeout ? '⏱️ Tiempo Agotado' : '❌ Respuesta Incorrecta'}</strong><br>La opción correcta era la respuesta indicada en verde.<br>${q.explanation}`;
+  }
+
+  $('nextBtn').style.display = "block";
+  $('nextBtn').textContent = state.index === state.questions.length - 1 ? "Finalizar Ronda" : "Siguiente Pregunta";
+}
+
+function nextQuestion() {
+  if (state.index < state.questions.length - 1) {
+    state.index++;
+    renderQuestion();
+  } else {
+    finishRound();
+  }
+}
+
+function finishRound() {
+  if (state.round === 1) {
+    state.r1WrongQuestions = state.questions.filter(q => q.wrong);
+    if (state.r1WrongQuestions.length > 0) {
+      state.round = 2;
+      state.questions = shuffle(state.r1WrongQuestions).map(q => ({ ...q, wrong: false, userSelected: null }));
+      state.index = 0;
+      renderQuestion();
+      return;
+    }
+  }
+  showResults();
+}
+
+// MOSTRAR RESULTADOS Y MODO REVISIÓN (MEJORA 2)
+function showResults() {
+  show("result");
+
+  const total = state.totalQsTarget;
+  const r1W = state.r1Wrong;
+  const r1C = state.r1Correct;
+  let r2C = state.r2Correct;
+  let r2W = state.r2Wrong;
+
+  const baseScore = (r1C / total) * 10;
+  let bonus = r1W > 0 ? (r2C / r1W) * 2.0 : 0;
+  const finalGrade = Math.min(10, Math.max(0, baseScore + bonus)).toFixed(1);
+  const isPassed = finalGrade >= 5.0;
+
+  $('repStudentName').textContent = state.name;
+  $('repDocName').textContent = `Documento(s): ${state.docNames}`;
+  $('repTotalQs').textContent = total;
+  $('repR1Stats').textContent = `${r1C} / ${r1W}`;
+  $('repR2Stats').textContent = state.r1WrongQuestions.length > 0 ? `${r2C} / ${r2W}` : "N/A (100% en R1)";
+  $('repFinalScore').textContent = `${finalGrade} / 10`;
+
+  const badge = $('repGradeBadge');
+  badge.textContent = isPassed ? "APROBADO" : "NO SUPERADO";
+  badge.className = `grade-badge ${isPassed ? 'grade-pass' : 'grade-fail'}`;
+
+  $('repCriteriaText').innerHTML = `
+    <strong>Criterio de Evaluación Aplicado:</strong><br>
+    • Ronda 1: Valor base de rendimiento (${r1C} aciertos de ${total}).<br>
+    • Ronda 2 (Recuperación): ${r1W > 0 ? `Se recuperaron ${r2C} de${r1W} errores de la R1.` : 'Exención por puntuación perfecta en Ronda 1.'}<br>
+    • Nota final calculada: <strong>${finalGrade}/10</strong>.
+  `;
+
+  renderReviewList();
+}
+
+function renderReviewList() {
+  const container = $('reviewList');
+  container.innerHTML = "";
+
+  state.roundHistory.forEach((q, i) => {
+    const isOk = !q.wrong;
+    const item = document.createElement("div");
+    item.className = `review-item ${isOk ? 'ok' : 'fail'}`;
+    item.innerHTML = `
+      <div style="font-weight:700; margin-bottom:6px;">Pregunta ${i + 1} (${q.round === 1 ? 'Ronda 1' : 'Ronda 2'}): ${isOk ? '✅ Correcta' : '❌ Incorrecta'}</div>
+      <div style="margin-bottom:8px; font-weight:600;">${q.question}</div>
+      <div style="font-size:0.9rem; margin-bottom:4px;"><strong>Tu respuesta:</strong> ${q.userSelected || 'No respondida'}</div>
+      <div style="font-size:0.9rem; color:var(--good); margin-bottom:8px;"><strong>Respuesta Correcta:</strong> ${q.answer}</div>
+      <div style="font-size:0.85rem; background:#fff; padding:10px; border-radius:6px; border:1px solid var(--border);">${q.explanation}</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// EVENTOS
+$('pdfFiles').addEventListener('change', () => {
+  state.files = [...$('pdfFiles').files];
+  if (state.files.length > 0) {
+    state.docNames = state.files.map(f => f.name).join(", ");
+    $('fileInfo').textContent = `Seleccionado(s): ${state.docNames}`;
+    $('setupMessage').textContent = "";
+  } else {
+    state.docNames = "";
+    $('fileInfo').textContent = "No se ha seleccionado ningún archivo.";
+  }
+});
+
+$('startBtn').onclick = async () => {
+  const name = $('studentName').value.trim();
+  const files = [...$('pdfFiles').files];
+  const count = parseInt($('questionCount').value, 10);
+
+  $('setupMessage').textContent = "";
+
+  if (!name) {
+    $('setupMessage').textContent = "Por favor, introduce tu Nombre y Apellidos completos.";
+    $('studentName').focus();
+    return;
+  }
+
+  if (!files.length) {
+    $('setupMessage').textContent = "Selecciona al menos un archivo PDF de estudio.";
+    return;
+  }
+
+  $('startBtn').disabled = true;
+
+  try {
+    const text = await readAllPDFs(files);
+    if (text.length < 500) {
+      throw new Error("El PDF contiene muy poco texto o está escaneado como imagen no legible.");
+    }
+
+    $('setupMessage').innerHTML = `<span class="loader"></span>Sintetizando preguntas conceptuales con IA…`;
+    await new Promise(r => setTimeout(r, 500));
+
+    const qs = generateAIConceptualQuestions(text, count);
+
+    state.name = name;
+    state.totalQsTarget = count;
+    state.questions = qs;
+    state.roundHistory = [];
+    state.round = 1;
+    state.index = 0;
+    state.r1Correct = 0;
+    state.r1Wrong = 0;
+    state.r2Correct = 0;
+    state.r2Wrong = 0;
+    state.r1WrongQuestions = [];
+
+    show("exam");
+    renderQuestion();
+  } catch (err) {
+    $('setupMessage').textContent = err.message || "Error al generar el examen.";
+  } finally {
+    $('startBtn').disabled = false;
+  }
+};
+
+$('nextBtn').onclick = () => {
+  nextQuestion();
+};
+
+$('toggleReviewBtn').onclick = () => {
+  const rev = $('reviewContainer');
+  const isHidden = rev.classList.contains("hidden");
+  rev.classList.toggle("hidden", !isHidden);
+  $('toggleReviewBtn').textContent = isHidden ? "🔼 Ocultar Revisión" : "🔍 Revisar Examen Completo";
+};
+
+$('downloadPdfBtn').onclick = async () => {
+  const el = $('reportCard');
+  try {
+    const canvas = await html2canvas(el, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+    pdf.save(`Examen_${state.name.replace(/\s+/g, '_')}.pdf`);
+  } catch (e) {
+    alert("Error al generar el PDF.");
+  }
+};
+
+$('downloadImgBtn').onclick = async () => {
+  const el = $('reportCard');
+  try {
+    const canvas = await html2canvas(el, { scale: 2 });
+    const link = document.createElement('a');
+    link.download = `Examen_${state.name.replace(/\s+/g, '_')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    alert("Error al exportar la imagen.");
+  }
+};
+
+$('restartBtn').onclick = () => {
+  stopTimer();
+  show("setup");
+  $('setupMessage').textContent = "";
+};
 })();
 </script>
 </body>
